@@ -64,14 +64,16 @@ impl<'a> Parser<'a> {
     fn parse_let_statement(&mut self) -> Result<Statement> {
         let identifier: String;
 
-        if let Some(Token::Identifier(ident)) = self.peek_token.clone() {
-            identifier = ident;
+        if let Some(Token::Identifier(ident)) = &self.peek_token {
+            identifier = ident.clone();
             self.next_token();
         } else {
             return Err(ParserError::ExpectedIdentifier(
                 self.peek_token.clone().unwrap(),
             ));
         }
+
+        // TODO: parse expressions
 
         Ok(Statement::Let(identifier, Expression::Integer(10)))
     }
