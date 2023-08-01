@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::mem;
+use std::iter::Peekable;
 
 use crate::{
     ast::{Expression, Program, Statement},
@@ -17,25 +17,14 @@ enum ParserError {
 
 #[derive(Debug)]
 struct Parser<'a> {
-    lexer: Lexer<'a>,
-    current_token: Option<Token>,
-    peek_token: Option<Token>,
+    lexer: Peekable<Lexer<'a>>,
 }
 
 impl<'a> Parser<'a> {
     fn new(l: Lexer<'a>) -> Self {
-        let mut p = Parser {
-            lexer: l,
-            current_token: None,
-            peek_token: None,
-        };
-        p.next_token();
-        p.next_token();
-        p
-    }
-
-    fn next_token(&mut self) {
-        self.current_token = mem::replace(&mut self.peek_token, self.lexer.next_token());
+        Parser {
+            lexer: l.peekable(),
+        }
     }
 
     fn parse_program(&mut self) -> Program {
@@ -43,39 +32,36 @@ impl<'a> Parser<'a> {
             statements: Vec::new(),
         };
 
-        while let Some(_) = self.current_token {
-            if let Ok(stmt) = self.parse_statement() {
+        while let Some(token) = self.lexer.next() {
+            if let Ok(stmt) = self.parse_statement(token) {
                 p.statements.push(stmt)
             };
             // TODO: handle errors
-            self.next_token();
+            self.lexer.next();
         }
 
         p
     }
 
-    fn parse_statement(&mut self) -> Result<Statement> {
-        match self.current_token {
-            Some(Token::Let) => self.parse_let_statement(),
+    fn parse_statement(&mut self, token: Token) -> Result<Statement> {
+        match token {
+            Token::Let => self.parse_let_statement(),
             _ => Err(ParserError::UnexpectedError),
         }
     }
 
     fn parse_let_statement(&mut self) -> Result<Statement> {
-        let identifier: String;
-
-        if let Some(Token::Identifier(ident)) = &self.peek_token {
-            identifier = ident.clone();
-            self.next_token();
-        } else {
-            return Err(ParserError::ExpectedIdentifier(
-                self.peek_token.clone().unwrap(),
-            ));
+        match self.lexer.peek() {
+            Some(Token::Identifier(_)) => {
+                // TODO: parse expressions
+                let ident = self.lexer.next().unwrap();
+                let expr = Expression::Integer(10);
+                Ok(Statement::Let(ident, expr))
+            }
+            _ => Err(ParserError::ExpectedIdentifier(
+                self.lexer.peek().clone().unwrap().clone(),
+            )),
         }
-
-        // TODO: parse expressions
-
-        Ok(Statement::Let(identifier, Expression::Integer(10)))
     }
 }
 
@@ -95,9 +81,12 @@ mod test_parser_statements {
         // parser.check_parser_errors();
 
         let expected = vec![
-            Statement::Let("x".to_string(), Expression::Integer(10)),
-            Statement::Let("y".to_string(), Expression::Boolean(true)),
-            Statement::Let("z".to_string(), Expression::Identifier("y".to_string())),
+            Statement::Let(Token::Identifier("x".into()), Expression::Integer(10)),
+            Statement::Let(Token::Identifier("y".into()), Expression::Boolean(true)),
+            Statement::Let(
+                Token::Identifier("z".into()),
+                Expression::Identifier(Token::Identifier("y".into())),
+            ),
         ];
 
         assert_eq!(program.statements, expected);

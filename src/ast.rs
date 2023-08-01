@@ -1,13 +1,15 @@
+use crate::token::Token;
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum Statement {
-    Let(String, Expression),
+    Let(Token, Expression),
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Expression {
     Integer(i32),
     Boolean(bool),
-    Identifier(String),
+    Identifier(Token),
 }
 
 #[derive(Debug)]

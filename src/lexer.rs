@@ -26,7 +26,7 @@ impl<'a> Lexer<'a> {
     pub fn next_token(&mut self) -> Option<Token> {
         while let Some(_) = self.input.next_if(|c| c.is_whitespace()) {}
 
-        let tok = match self.input.next() {
+        let token = match self.input.next() {
             Some(t) => match t {
                 '+' => Token::Plus,
                 '-' => Token::Minus,
@@ -54,7 +54,7 @@ impl<'a> Lexer<'a> {
             },
             None => return None,
         };
-        Some(tok)
+        Some(token)
     }
 
     fn read_identifier(&mut self, c: char) -> Token {
