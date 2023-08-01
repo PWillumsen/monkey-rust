@@ -1,5 +1,4 @@
 use monkeyterp::lexer::Lexer;
-use monkeyterp::token::Token;
 use std::io::{self, Write};
 
 fn main() {
@@ -15,10 +14,7 @@ fn main() {
         let l = Lexer::new(&buffer);
 
         for token in l {
-            match token {
-                Token::EOF => break,
-                _ => println!("{:?}", token),
-            }
+            println!("{:?}", token);
         }
 
         buffer.clear();

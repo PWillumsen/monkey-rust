@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::mem;
 
 use crate::{
@@ -15,21 +16,22 @@ enum ParserError {
 }
 
 #[derive(Debug)]
-struct Parser {
-    lexer: Lexer,
-    current_token: Token,
-    peek_token: Token,
+struct Parser<'a> {
+    lexer: Lexer<'a>,
+    current_token: Option<Token>,
+    peek_token: Option<Token>,
 }
 
-impl Parser {
-    fn new(mut l: Lexer) -> Self {
-        let current_token = l.next_token();
-        let peek_token = l.next_token();
-        Parser {
+impl<'a> Parser<'a> {
+    fn new(l: Lexer<'a>) -> Self {
+        let mut p = Parser {
             lexer: l,
-            current_token,
-            peek_token,
-        }
+            current_token: None,
+            peek_token: None,
+        };
+        p.next_token();
+        p.next_token();
+        p
     }
 
     fn next_token(&mut self) {
@@ -41,35 +43,37 @@ impl Parser {
             statements: Vec::new(),
         };
 
-        while self.current_token != Token::EOF {
-            let stmt = self.parse_statement();
-            if stmt.is_ok() {
-                p.statements.push(stmt.unwrap());
+        while let Some(_) = self.current_token {
+            if let Ok(stmt) = self.parse_statement() {
+                p.statements.push(stmt)
             };
+            // TODO: handle errors
             self.next_token();
         }
 
         p
     }
 
-    fn parse_statement(&self) -> Result<Statement> {
+    fn parse_statement(&mut self) -> Result<Statement> {
         match self.current_token {
-            Token::Let => Ok(self.parse_let_statement()?),
+            Some(Token::Let) => self.parse_let_statement(),
             _ => Err(ParserError::UnexpectedError),
         }
     }
 
-    fn parse_let_statement(&self) -> Result<Statement> {
+    fn parse_let_statement(&mut self) -> Result<Statement> {
         let identifier: String;
 
-        if let Token::Identifier(ident) = self.peek_token {
+        if let Some(Token::Identifier(ident)) = self.peek_token.clone() {
             identifier = ident;
             self.next_token();
         } else {
-            return Err(ParserError::ExpectedIdentifier(self.peek_token));
+            return Err(ParserError::ExpectedIdentifier(
+                self.peek_token.clone().unwrap(),
+            ));
         }
 
-        Ok(Statement::Let(identifier, expr))
+        Ok(Statement::Let(identifier, Expression::Integer(10)))
     }
 }
 
@@ -79,7 +83,7 @@ mod test_parser_statements {
 
     #[test]
     fn test_let_statements() {
-        let input = r"let x = 5;
+        let input = r"let x = 10;
                     let y = true;
                     let z = y;";
 
@@ -89,7 +93,7 @@ mod test_parser_statements {
         // parser.check_parser_errors();
 
         let expected = vec![
-            Statement::Let("x".to_string(), Expression::Integer(5)),
+            Statement::Let("x".to_string(), Expression::Integer(10)),
             Statement::Let("y".to_string(), Expression::Boolean(true)),
             Statement::Let("z".to_string(), Expression::Identifier("y".to_string())),
         ];

@@ -1,12 +1,10 @@
-#![allow(dead_code)]
+use std::{iter::Peekable, str::Chars};
+
 use crate::token::Token;
 
 #[derive(Debug)]
-pub struct Lexer {
-    input: Vec<char>, // TODO: change to Peekable<Chars<_>> ?
-    position: usize,
-    read_position: usize,
-    ch: Option<char>,
+pub struct Lexer<'a> {
+    input: Peekable<Chars<'a>>,
 }
 
 trait IsLetter {
@@ -18,47 +16,17 @@ impl IsLetter for char {
     }
 }
 
-impl Lexer {
-    pub fn new(input: &str) -> Self {
-        let mut l = Lexer {
-            input: input.chars().collect(),
-            position: 0,
-            read_position: 0,
-            ch: None,
-        };
-        l.read_char();
-        l
-    }
-    fn peek_char(&self) -> Option<&char> {
-        if self.read_position >= self.input.len() {
-            return None;
-        } else {
-            return self.input.get(self.read_position);
-        }
-    }
-    fn read_char(&mut self) {
-        self.ch = match self.input.get(self.read_position) {
-            Some(&char) => Some(char),
-            None => None,
-        };
-        self.position = self.read_position;
-        self.read_position += 1;
-    }
-
-    fn match_next_char(&mut self, c: char) -> bool {
-        match self.peek_char() {
-            Some(cc) if *cc == c => {
-                self.read_char();
-                true
-            }
-            _ => false,
+impl<'a> Lexer<'a> {
+    pub fn new(input: &'a str) -> Self {
+        Lexer {
+            input: input.chars().peekable(),
         }
     }
 
-    pub fn next_token(&mut self) -> Token {
-        self.skip_whitespace();
+    pub fn next_token(&mut self) -> Option<Token> {
+        while let Some(_) = self.input.next_if(|c| c.is_whitespace()) {}
 
-        let tok = match self.ch {
+        let tok = match self.input.next() {
             Some(t) => match t {
                 '+' => Token::Plus,
                 '-' => Token::Minus,
@@ -72,33 +40,29 @@ impl Lexer {
                 '*' => Token::Asterisk,
                 '<' => Token::LT,
                 '>' => Token::GT,
-                '!' => match self.match_next_char('=') {
-                    true => Token::NotEqual,
-                    false => Token::Bang,
+                '!' => match self.input.next_if_eq(&'=') {
+                    Some(_) => Token::NotEqual,
+                    None => Token::Bang,
                 },
-                '=' => match self.match_next_char('=') {
-                    true => Token::Equal,
-                    false => Token::Assign,
+                '=' => match self.input.next_if_eq(&'=') {
+                    Some(_) => Token::Equal,
+                    None => Token::Assign,
                 },
-                c if c.is_letter() => {
-                    let s = self.read_identifier();
-                    return self.lookup_identifier(s);
-                }
-                c if c.is_digit(10) => return Token::Integer(self.read_number()),
+                c if c.is_letter() => self.read_identifier(c),
+                c if c.is_digit(10) => self.read_number(c),
                 _ => Token::Illegal(t.to_string()),
             },
-            None => Token::EOF,
+            None => return None,
         };
-        self.read_char();
-        tok
+        Some(tok)
     }
 
-    fn read_identifier(&mut self) -> String {
-        let start = self.position;
-        while self.ch.unwrap_or('!').is_letter() {
-            self.read_char();
+    fn read_identifier(&mut self, c: char) -> Token {
+        let mut ident = String::from(c);
+        while let Some(l) = self.input.next_if(|cc| cc.is_letter()) {
+            ident.push(l)
         }
-        self.input[start..self.position].iter().collect()
+        self.lookup_identifier(ident)
     }
 
     fn lookup_identifier(&self, s: String) -> Token {
@@ -114,34 +78,20 @@ impl Lexer {
         }
     }
 
-    fn skip_whitespace(&mut self) {
-        while self.ch.unwrap_or('!').is_whitespace() {
-            self.read_char()
+    fn read_number(&mut self, c: char) -> Token {
+        let mut num = String::from(c);
+        while let Some(n) = self.input.next_if(|cc| cc.is_digit(10)) {
+            num.push(n)
         }
-    }
-
-    fn read_number(&mut self) -> i32 {
-        let start = self.position;
-        while self.ch.unwrap_or('a').is_digit(10) {
-            self.read_char();
-        }
-        self.input[start..self.position]
-            .iter()
-            .collect::<String>()
-            .parse()
-            .unwrap()
+        Token::Integer(num.parse().unwrap())
     }
 }
 
-impl Iterator for Lexer {
+impl<'a> Iterator for Lexer<'a> {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.position <= self.input.len() {
-            Some(self.next_token())
-        } else {
-            None
-        }
+        self.next_token()
     }
 }
 
@@ -173,7 +123,7 @@ mod tests {
             let tok = l.next_token();
             dbg!(&tt);
             dbg!(&tok);
-            assert_eq!(&tok, tt);
+            assert_eq!(&tok.unwrap_or(Token::EOF), tt);
         }
     }
 
@@ -279,7 +229,7 @@ mod tests {
             dbg!(&tt);
             let tok = l.next_token();
             dbg!(&tok);
-            assert_eq!(&tok, tt);
+            assert_eq!(&tok.unwrap_or(Token::EOF), tt);
         }
     }
 }
