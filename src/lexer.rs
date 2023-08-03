@@ -24,7 +24,7 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn next_token(&mut self) -> Option<Token> {
-        while let Some(_) = self.input.next_if(|c| c.is_whitespace()) {}
+        while self.input.next_if(|c| c.is_whitespace()).is_some() {}
 
         let token = match self.input.next() {
             Some(t) => match t {
