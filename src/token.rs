@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Token {
     Illegal(String),
@@ -27,4 +29,38 @@ pub enum Token {
     Else,
     Equal,
     NotEqual,
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::Illegal(s) => write!(f, "{s}"),
+            Token::EOF => write!(f, ""),
+            Token::Identifier(s) => write!(f, "{s}"),
+            Token::Integer(s) => write!(f, "{s}"),
+            Token::Assign => write!(f, "="),
+            Token::Plus => write!(f, "+"),
+            Token::Minus => write!(f, "-"),
+            Token::Bang => write!(f, "!"),
+            Token::Asterisk => write!(f, "*"),
+            Token::Slash => write!(f, "/"),
+            Token::LT => write!(f, "<"),
+            Token::GT => write!(f, ">"),
+            Token::Comma => write!(f, ","),
+            Token::Semicolon => write!(f, ";"),
+            Token::LParen => write!(f, "("),
+            Token::RParen => write!(f, ")"),
+            Token::LBrace => write!(f, "{{"),
+            Token::RBrace => write!(f, "}}"),
+            Token::Function => write!(f, ""),
+            Token::Let => write!(f, "let"),
+            Token::Return => write!(f, "return"),
+            Token::True => write!(f, "true"),
+            Token::False => write!(f, "false"),
+            Token::If => write!(f, "if"),
+            Token::Else => write!(f, "else"),
+            Token::Equal => write!(f, "=="),
+            Token::NotEqual => write!(f, "!="),
+        }
+    }
 }

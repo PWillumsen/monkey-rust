@@ -14,23 +14,24 @@ enum ParserError {
     ExpectedIdentifier,
     UnexpectedError,
     ExpectedAssignToken,
+    UnexpectedEOFError,
 }
 
 #[derive(Debug)]
-struct Parser<'a> {
+pub struct Parser<'a> {
     lexer: Peekable<Lexer<'a>>,
     errors: Vec<ParserError>,
 }
 
 impl<'a> Parser<'a> {
-    fn new(l: Lexer<'a>) -> Self {
+    pub fn new(l: Lexer<'a>) -> Self {
         Parser {
             lexer: l.peekable(),
             errors: Vec::new(),
         }
     }
 
-    fn parse_program(&mut self) -> Program {
+    pub fn parse_program(mut self) -> Program {
         let mut p = Program {
             statements: Vec::new(),
         };
@@ -50,7 +51,8 @@ impl<'a> Parser<'a> {
         match self.lexer.next() {
             Some(Token::Let) => self.parse_let_statement(),
             Some(Token::Return) => self.parse_return_statement(),
-            _ => Err(ParserError::UnexpectedError),
+            Some(_) => self.parse_expression_statement(),
+            None => Err(ParserError::UnexpectedEOFError),
         }
     }
 
@@ -66,10 +68,16 @@ impl<'a> Parser<'a> {
 
         self.lexer.next();
         let expr = self.parse_expression()?;
-        while self.lexer.next_if(|t| t != &Token::Semicolon).is_some() {}
-        self.lexer.next_if_eq(&Token::Semicolon);
 
         Ok(Statement::Let(identifier, expr))
+    }
+
+    fn infix_parse(&self, expr: Expression) -> Result<Expression> {
+        todo!()
+    }
+
+    fn prefix_parse(&self) -> Result<Expression> {
+        todo!()
     }
 
     fn parse_expression(&mut self) -> Result<Expression> {
@@ -78,8 +86,11 @@ impl<'a> Parser<'a> {
 
     fn parse_return_statement(&mut self) -> Result<Statement> {
         let expr = self.parse_expression()?;
-        while self.lexer.next_if(|t| t != &Token::Semicolon).is_some() {}
         Ok(Statement::Return(expr))
+    }
+
+    fn parse_expression_statement(&self) -> Result<Statement> {
+        todo!()
     }
 }
 
@@ -94,7 +105,7 @@ mod test_parser_statements {
                     let z = y;";
 
         let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
+        let parser = Parser::new(lexer);
         let program = parser.parse_program();
         // parser.check_parser_errors();
 
@@ -116,7 +127,7 @@ mod test_parser_statements {
                     return 99999;";
 
         let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
+        let parser = Parser::new(lexer);
         let program = parser.parse_program();
 
         let expected = vec![
@@ -124,6 +135,21 @@ mod test_parser_statements {
             Statement::Return(Expression::Integer(5)),
             Statement::Return(Expression::Integer(99999)),
         ];
+
+        assert_eq!(program.statements, expected);
+    }
+
+    #[test]
+    fn test_identifier_expression() {
+        let input = r"foobar;";
+
+        let lexer = Lexer::new(input);
+        let parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        let expected = vec![Statement::Expression(Expression::Identifier(
+            Token::Identifier("foobar".into()),
+        ))];
 
         assert_eq!(program.statements, expected);
     }
