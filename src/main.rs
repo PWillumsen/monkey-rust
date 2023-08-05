@@ -1,5 +1,5 @@
-use monkeyterp::lexer::Lexer;
-use monkeyterp::parser::Parser;
+use monkey::lexer::Lexer;
+use monkey::parser::Parser;
 use std::io::{self, Write};
 
 fn main() {
